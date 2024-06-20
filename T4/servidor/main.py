@@ -29,7 +29,7 @@ def handle_client(client_socket):
                 data.extend(packet)
             
             # Process the message
-            print(f"Received message: {data}")
+            print(f"Received message: {data.decode('utf-8')}")
             # Here you would add logic to process the message
             response = b'OK'
             client_socket.send(len(response).to_bytes(4, 'big') + response)
