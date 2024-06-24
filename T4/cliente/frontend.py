@@ -2,18 +2,22 @@ from backend import ClientBackend
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QPushButton, QLabel, QLineEdit, QComboBox, QGridLayout, 
                              QHBoxLayout, QScrollArea, QFormLayout, QFrame)
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread
+from PyQt6.QtCore import Qt, QTimer, QRect
 from PyQt6.QtGui import QPixmap
 import sys
 import numpy as np
 import json
 import os
-import socket
+import pygame
+import random
 
 from parametros import *
 
+# Inicializar pygame para el uso de sonidos
+pygame.init()
+
 # Constante para el tamaño de las celdas
-CELL_SIZE = 20
+CELL_SIZE = 23
 
 # Board: clase que representa internamente el estado del juego
 class Board:
@@ -79,7 +83,7 @@ class GameController:
 
         self.player = QLabel(self.ClientFrontend)
         self.player.setFixedSize(CELL_SIZE, CELL_SIZE)
-        self.player.setStyleSheet("border: 1px solid black;")
+        self.player.setStyleSheet("border: 0px solid black;")
         self.player.setPixmap(QPixmap("assets/sprites/pepa/down_0.png"))
         self.player.setScaledContents(True)
 
@@ -124,24 +128,51 @@ class GameController:
         i, j = self.Board.getCurrentPosition()
         if self.Board.isEmpty():
             self.Board.poop()
+            self.ClientFrontend.play_sound("poop.wav")
             QTimer.singleShot(TIEMPO_TRANSICION * 1000, lambda: self.convertPoopToLettuce(i, j))
         else:
             self.Board.eat()
+            self.ClientFrontend.play_sound("comer.wav")
         self.updateBoard()
 
     def convertPoopToLettuce(self, i, j):
         self.Board.grid[i][j] = 1
         self.updateBoard()
 
+class Sandia(QLabel):
+    def __init__(self, parent, client_frontend):
+        super().__init__(parent)
+        self.client_frontend = client_frontend
+        self.setPixmap(QPixmap("assets/sprites/sandia.png"))
+        self.setScaledContents(True)
+        self.setFixedSize(40, 40)
+        self.setStyleSheet("background: transparent;")
+        self.show()
+
+    def mousePressEvent(self, event):
+        self.client_frontend.capture_sandia(self)
+        super().mousePressEvent(event)
+
 class ClientFrontend(QMainWindow):
-    def __init__(self, config_path):
+    def __init__(self, config_path, port):
         super().__init__()
         self.backend = ClientBackend(config_path)
+        self.port = port
+        self.muted = False
         self.initUI()
+        self.cheat_buffer = []
+        self.cheat_codes = {
+            'INF': self.activate_infinite_time,
+            'MUTE': self.mute_sounds
+        }
+
+    def play_sound(self, sound_file):
+        if not self.muted:
+            pygame.mixer.Sound(f"assets/sonidos/{sound_file}").play()
 
     def initUI(self):
         self.setWindowTitle('Juego de Pepa')
-        self.setGeometry(100, 100, 800, 600)
+        self.setGeometry(100, 100, 800, 500)
 
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
@@ -150,6 +181,7 @@ class ClientFrontend(QMainWindow):
         self.central_widget.setLayout(self.layout)
 
         self.start_screen()
+        self.play_sound("musica_1.wav")
 
     def load_board(self, filename):
         self.board = Board(filename)
@@ -157,6 +189,7 @@ class ClientFrontend(QMainWindow):
         self.controller = GameController(self.board, self)
 
     def start_screen(self):
+        self.stop_timers()
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
 
@@ -165,15 +198,10 @@ class ClientFrontend(QMainWindow):
 
         self.logo = QLabel(self)
         pixmap = QPixmap("assets/sprites/logo.png")
-        scaled_pixmap = pixmap.scaled(200, 100, Qt.AspectRatioMode.KeepAspectRatio)
+        scaled_pixmap = pixmap.scaled(400, 200, Qt.AspectRatioMode.KeepAspectRatio)
         self.logo.setPixmap(scaled_pixmap)
         self.logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.layout.addWidget(self.logo, 0, 0, 1, 3)
-
-        self.fame_label = QLabel("Salón de la Fama", self)
-        self.fame_label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-        self.fame_label.setStyleSheet("font-size: 18px; margin: 10px;")
-        self.layout.addWidget(self.fame_label, 1, 0, 1, 1)
 
         self.scroll_area = QScrollArea(self)
         self.scroll_area.setWidgetResizable(True)
@@ -217,11 +245,8 @@ class ClientFrontend(QMainWindow):
         if os.path.exists("puntaje.txt"):
             with open("puntaje.txt", "r") as file:
                 for line in file:
-                    try:
-                        name, score = line.strip().split(': ')
-                        scores.append((name, float(score)))
-                    except ValueError:
-                        print(f"Línea con formato incorrecto: {line.strip()}")
+                    name, score = line.strip().split(': ')
+                    scores.append((name, float(score)))
         return sorted(scores, key=lambda x: x[1], reverse=True)
 
     def load_puzzles(self):
@@ -235,11 +260,13 @@ class ClientFrontend(QMainWindow):
     def start_game(self):
         self.username = self.username_input.text()
         if not self.validate_username(self.username):
-            self.show_message("Nombre de usuario no válido. Debe ser alfanumérico, contener al menos una mayúscula y un número.")
             return
 
         self.puzzle = self.puzzle_dropdown.currentText()
-        self.backend.connect(8000)
+        if hasattr(self, 'backend') and self.backend.client_socket:
+            self.backend.client_socket.close()
+        self.backend = ClientBackend("config.json")
+        self.backend.connect(self.port)
         self.game_screen()
 
     def validate_username(self, username):
@@ -275,6 +302,10 @@ class ClientFrontend(QMainWindow):
         self.timer.timeout.connect(self.update_timer)
         self.timer.start(1000)
 
+        self.sandia_timer = QTimer(self)
+        self.sandia_timer.timeout.connect(self.spawn_sandia)
+        self.sandia_timer.start(TIEMPO_APARICION * 1000)
+
         check_button = QPushButton("Comprobar", self)
         check_button.clicked.connect(self.validate_solution)
         self.pause_button = QPushButton("Pausar", self)
@@ -297,19 +328,30 @@ class ClientFrontend(QMainWindow):
         frame.setLineWidth(1)
         n = board.getHeight()
         m = board.getWidth()
+
         for i in range(n):
-            row_text = str(board.p_left_list[i])
-            row_label = QLabel(row_text, self)
-            row_indicator.addWidget(row_label, i, 0)
+            row_text = board.p_left_list[i]
+            row_widget = QWidget(self)
+            row_layout = QHBoxLayout(row_widget)
+            for num in row_text:
+                row_label = QLabel(str(num), self)
+                row_layout.addWidget(row_label)
+            self.row_indicator.addWidget(row_widget, i, 0)
+
         for i in range(m):
-            col_text = str(board.p_up_list[i])
-            col_label = QLabel(col_text, self)
-            col_indicator.addWidget(col_label, 0, i)
+            col_text = board.p_up_list[i]
+            col_widget = QWidget(self)
+            col_layout = QVBoxLayout(col_widget)
+            for num in col_text:
+                col_label = QLabel(str(num), self)
+                col_layout.addWidget(col_label)
+            self.col_indicator.addWidget(col_widget, 0, i)
+
         for i in range(n):
             for j in range(m):
                 cell = QLabel(self)
                 cell.setFixedSize(CELL_SIZE, CELL_SIZE)
-                cell.setStyleSheet("border: 1px solid black;")
+                cell.setStyleSheet("border: 0px solid black;")
                 cell.setPixmap(QPixmap("assets/sprites/lechuga.png"))
                 cell.setScaledContents(True)
                 game_board.addWidget(cell, i, j)
@@ -317,36 +359,47 @@ class ClientFrontend(QMainWindow):
     def pause_game(self):
         if self.timer.isActive():
             self.timer.stop()
+            self.sandia_timer.stop()
             self.pause_button.setText("Reanudar")
         else:
             self.timer.start(1000)
+            self.sandia_timer.start(TIEMPO_APARICION * 1000)
             self.pause_button.setText("Pausar")
 
     def validate_solution(self):
+        self.stop_timers()
         solution = "\n".join(["".join(map(str, row)) for row in self.board.grid])
         response = self.backend.send_message(solution)
         if response == "OK":
+            self.play_sound("juego_ganado.wav")
             self.show_message("Solución correcta")
             self.save_score()
         else:
             self.show_message("Solución incorrecta")
 
     def save_score(self):
-        score = (self.time_remaining * self.board.getHeight() * self.board.getWidth() * CONSTANTE) / (300 - self.time_remaining)
+        if hasattr(self, 'infinite_time') and self.infinite_time:
+            score = PUNTAJE_INF
+        else:
+            score = (self.time_remaining * self.board.getHeight() * self.board.getWidth() * CONSTANTE) / (300 - self.time_remaining)
         score_entry = f"{self.username}: {round(score, 2)}"
         with open("puntaje.txt", "a") as file:
             file.write(f"{score_entry}\n")
         self.start_screen()
 
     def update_timer(self):
-        self.time_remaining -= 1
-        minutes, seconds = divmod(self.time_remaining, 60)
-        self.timer_label.setText(f"{minutes:02}:{seconds:02}")
-        if self.time_remaining <= 0:
-            self.show_message("Tiempo agotado")
-            self.start_screen()
+        if not hasattr(self, 'infinite_time') or not self.infinite_time:
+            self.time_remaining -= 1
+            minutes, seconds = divmod(self.time_remaining, 60)
+            if hasattr(self, 'timer_label') and self.timer_label:
+                self.timer_label.setText(f"{minutes:02}:{seconds:02}")
+            if self.time_remaining <= 0:
+                self.play_sound("juego_perdido.wav")
+                self.show_message("Tiempo agotado")
+                self.start_screen()
 
     def show_message(self, message):
+        self.stop_timers()
         # Crear un nuevo layout para mostrar el mensaje
         message_layout = QVBoxLayout()
         message_layout.addWidget(QLabel(message, self))
@@ -368,19 +421,54 @@ class ClientFrontend(QMainWindow):
                 child.widget().deleteLater()
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key.Key_W:
-            self.controller.moveUp()
-        elif event.key() == Qt.Key.Key_A:
-            self.controller.moveLeft()
-        elif event.key() == Qt.Key.Key_S:
-            self.controller.moveDown()
-        elif event.key() == Qt.Key.Key_D:
-            self.controller.moveRight()
-        elif event.key() == Qt.Key.Key_G:
-            self.controller.eat_or_poop()
+        key = event.text().upper()
+        if key in ['I', 'N', 'F', 'M', 'U', 'T', 'E']:
+            self.cheat_buffer.append(key)
+            self.cheat_buffer = self.cheat_buffer[-4:]
+            self.check_cheat_codes()
+        else:
+            if event.key() == Qt.Key.Key_W:
+                self.controller.moveUp()
+            elif event.key() == Qt.Key.Key_A:
+                self.controller.moveLeft()
+            elif event.key() == Qt.Key.Key_S:
+                self.controller.moveDown()
+            elif event.key() == Qt.Key.Key_D:
+                self.controller.moveRight()
+            elif event.key() == Qt.Key.Key_G:
+                self.controller.eat_or_poop()
 
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    frontend = ClientFrontend("config.json")
-    frontend.show()
-    sys.exit(app.exec())
+    def check_cheat_codes(self):
+        for code, action in self.cheat_codes.items():
+            if ''.join(self.cheat_buffer[-len(code):]) == code:
+                action()
+
+    def activate_infinite_time(self):
+        self.infinite_time = True
+        self.time_remaining = 9999  
+        self.timer_label.setText("∞")
+
+    def mute_sounds(self):
+        self.muted = True
+
+    def spawn_sandia(self):
+        sandia = Sandia(self, self)
+        x = random.randint(50, self.width() - 90)
+        y = random.randint(50, self.height() - 140)
+        sandia.setGeometry(QRect(x, y, 40, 40))
+        QTimer.singleShot(TIEMPO_DURACION * 1000, lambda: self.remove_sandia(sandia))
+
+    def remove_sandia(self, sandia):
+        if sandia in self.findChildren(Sandia):
+            sandia.deleteLater()
+
+    def capture_sandia(self, sandia):
+        self.play_sound("sandia.wav")
+        self.time_remaining += TIEMPO_ADICIONAL
+        self.remove_sandia(sandia)
+
+    def stop_timers(self):
+        if hasattr(self, 'timer') and self.timer.isActive():
+            self.timer.stop()
+        if hasattr(self, 'sandia_timer') and self.sandia_timer.isActive():
+            self.sandia_timer.stop()

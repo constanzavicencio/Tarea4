@@ -27,95 +27,67 @@ SINO QUE SE DEBERÁ EXPLICAR QUÉ SE REALIZO DETALLADAMENTE EN CADA ITEM.
 ⚠️⚠️
 
 #### Entidades: 18.5 pts (21%)
-##### ❌✅🟠 Pepa
-##### ❌✅🟠 Sandías
+##### ✅ Pepa
+##### ✅ Sandías
 
 #### Interfaz gráfica: 27 pts (30%)
-##### ❌✅🟠 Ventana Inicio
-##### ❌✅🟠 Ventana Juego
-##### ❌✅🟠 Fin del *puzzle*
+##### ✅ Ventana Inicio
+##### ✅ Ventana Juego
+##### ✅ Fin del *puzzle*
 
 #### Interacción: 13 pts (14%)
-##### ❌✅🟠 *Cheatcodes*
-##### ❌✅🟠 Sonidos
+##### ✅ *Cheatcodes*
+##### 🟠 Sonidos (hechos con _pygame_)
 
 #### *Networking*: 20.5 pts (23%)
-##### ❌✅🟠 Arquitectura
-##### ❌✅🟠 *Networking*
-##### ❌✅🟠 Codificación y decodifición
+##### 🟠 Arquitectura
+##### ✅ *Networking*
+##### ✅ Codificación y decodifición
 
 #### Archivos: 11 pts (12%)
-##### ❌✅🟠 *sprites*
-##### ❌✅🟠 *puzzle*
-##### ❌✅🟠 JSON
-##### ❌✅🟠 parámetros.py
+##### 🟠 *sprites*
+##### ✅ *puzzle*
+##### ✅ JSON
+##### ✅ parámetros.py
 
 
 ## Ejecución :computer:
-El módulo principal de la tarea a ejecutar es  ```archivo.py```. Además se debe crear los siguientes archivos y directorios adicionales:
-1. ```archivo.ext``` en ```ubicación```
-2. ```directorio``` en ```ubicación```
-3. ...
+El módulo principal de la tarea a ejecutar es  ```main.py``` de ```cliente```, mediante el comando ```python main.py 8000``` desde la terminal. Además se debe contar con los siguientes archivos y directorios adicionales:
+1. ```frontend.py``` en ```cliente```
+2. ```backend.py``` en ```cliente```
+3. ```config.json``` en ```cliente```
+4. ```parametros.py``` en ```cliente```
+5. ```main.py``` en ```servidor```
+6. ```config.json``` en ```servidor```
 
 
 ## Librerías :books:
 ### Librerías externas utilizadas
 La lista de librerías externas que utilicé fue la siguiente:
 
-1. ```librería_1```: ```función() / módulo```
-2. ```librería_2```: ```función() / módulo``` (debe instalarse)
-3. ...
+1. ```pygame```: se importa completo (debe instalarse)
+2. ```PyQt6```: ```QtWidgets```, ```QtCore```, ```QtGui``` (debe instalarse ````PyQt6```)
+3. ```socket```: se importa completo
+4. ```sys```: se importa completo
+5. ```numpy```: se importa completo
+6. ```os```: se importa completo
+7. ```random```: se importa completo
+8. ```threading```: módulos ```Thread``` y ```Event```
 
 ### Librerías propias
 Por otro lado, los módulos que fueron creados fueron los siguientes:
 
-1. ```librería_1```: Contiene a ```ClaseA```, ```ClaseB```, (ser general, tampoco es necesario especificar cada una)...
-2. ```librería_2```: Hecha para <insertar descripción **breve** de lo que hace o qué contiene>
-3. ...
+1. ```backend```: Contiene al backend de cliente
+2. ```frontend```: Contiene al frontend de cliente
 
 ## Supuestos y consideraciones adicionales :thinking:
 Los supuestos que realicé durante la tarea son los siguientes:
 
-1. <Descripción/consideración 1 y justificación del por qué es válido/a> 
-2. <Descripción/consideración 2 y justificación del por qué es válido/a>
-3. ...
+1. Para los cheatcodes hay que presionar las teclas en orden, manteniéndolas presionadas.
+2. En mi computador se activa bloquea el teclado de Windows si aprieto 4 teclas a la vez, por lo que no pude testear el cheatcode MUTE :c pero estimo que debiera funcionar.
+3. Para el usuario de juego se requiere un nombre alfanumérico con al menos un número y una mayúscula (ejemplo: Coni1).
 
-PD: <una última consideración (de ser necesaria) o comentario hecho anteriormente que se quiera **recalcar**>
+PD: Dado que no logré implementar los sonidos con PyQt6, lo hice con pygame. Entiendo que esto no está permitido y entiendo si no se me llega a dar puntaje con ello. Lo aclaro para que no se malentienda que pretenda disimularlo :c lo hice con eso porque quedaba más cute que sin sonido.
 
 
 -------
-
-
-
-**EXTRA:** si van a explicar qué hace específicamente un método, no lo coloquen en el README mismo. Pueden hacerlo directamente comentando el método en su archivo. Por ejemplo:
-
-```python
-class Corrector:
-
-    def __init__(self):
-          pass
-
-    # Este método coloca un 6 en las tareas que recibe
-    def corregir(self, tarea):
-        tarea.nota  = 6
-        return tarea
-```
-
-Si quieren ser más formales, pueden usar alguna convención de documentación. Google tiene la suya, Python tiene otra y hay muchas más. La de Python es la [PEP287, conocida como reST](https://www.python.org/dev/peps/pep-0287/). Lo más básico es documentar así:
-
-```python
-def funcion(argumento):
-    """
-    Mi función hace X con el argumento
-    """
-    return argumento_modificado
-```
-Lo importante es que expliquen qué hace la función y que si saben que alguna parte puede quedar complicada de entender o tienen alguna función mágica usen los comentarios/documentación para que el ayudante entienda sus intenciones.
-
-## Referencias de código externo :book:
-
-Para realizar mi tarea saqué código de:
-1. \<link de código>: este hace \<lo que hace> y está implementado en el archivo <nombre.py> en las líneas <número de líneas> y hace <explicación breve de que hace>
-
-## Descuentos
-La guía de descuentos se encuentra [link](https://github.com/IIC2233/Syllabus/blob/main/Tareas/Bases%20Generales%20de%20Tareas%20-%20IIC2233.pdf).

@@ -1,6 +1,6 @@
 # 3. Mecánicas de Juego
 ## Modo de Juego
-TIEMPO_JUEGO = 120 # (segundos)
+TIEMPO_JUEGO = 10 # (segundos)
 ## Puntaje
 CONSTANTE = 10
 
@@ -8,7 +8,7 @@ CONSTANTE = 10
 ## Pepa
 TIEMPO_TRANSICION = 3
 ## Sandía
-TIEMPO_APARICION = 30
+TIEMPO_APARICION = 10
 TIEMPO_ADICIONAL = 15
 TIEMPO_DURACION = 10
 
